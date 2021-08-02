@@ -87,6 +87,7 @@ def test(test_loader, model, device, crit, epoch):
     return loss, acc
         
 def main(args):
+
     use_gpu = not args.no_gpu and torch.cuda.is_available()
     device = torch.device("cuda" if use_gpu else "cpu")
     torch.manual_seed(args.seed)
@@ -97,10 +98,12 @@ def main(args):
         args.weight_init = 'UNIFORM'
 
     if args.dataset != 'RANDOM':
-        train_loader, train_loader_log, test_loader, input_size, output_size, input_channels = get_data(args.dataset, args.dataset_path, args.batch_size, args.test_batch_size, num_classes=args.num_classes, input_dim=args.input_dim, datasize=args.datasize, label_noise=args.label_noise)
+        train_loader, train_loader_log, test_loader, input_size, output_size, input_channels = get_data(args.dataset, args.dataset_path, args.batch_size, args.test_batch_size, num_classes=args.num_classes, input_dim=args.input_dim, datasize=args.datasize, label_noise=args.label_noise, k = args.k)
     else:
-        train_loader, train_loader_log, test_loader, input_size, output_size, input_channels = get_random_data(batch_size=args.batch_size, test_batch_size=args.test_batch_size, num_classes=args.num_classes, input_dim=args.input_dim, datasize=args.datasize, label_noise=args.label_noise, beta=args.beta, alpha=args.alpha, task=args.task)        
-        
+        train_loader, train_loader_log, test_loader, input_size, output_size, input_channels = get_random_data(batch_size=args.batch_size, test_batch_size=args.test_batch_size, num_classes=args.num_classes, input_dim=args.input_dim, datasize=args.datasize, label_noise=args.label_noise, beta=args.beta, alpha=args.alpha, task=args.task, k=args.k)        
+
+    print("Inout Size:", input_size)
+
     train_losses = []
     test_losses = []
     train_accs = []
@@ -115,7 +118,7 @@ def main(args):
         grad_alignments[l]=[]
 
     if args.model == 'fc':
-        model = FullyConnected(input_size = input_channels * input_size**2,
+        model = FullyConnected(input_size = input_channels * input_size * args.k * input_size,
                                output_size=output_size, hidden_size=args.hidden_size, n_layers=args.n_layers,
                                training_method=args.training_method, activation=args.activation, 
                                feedback_init=args.feedback_init, weight_init = args.weight_init,

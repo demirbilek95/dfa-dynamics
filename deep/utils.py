@@ -4,9 +4,10 @@ import itertools
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.utils.data import Dataset
 import torchvision
 import torchvision.datasets as datasets
-import torchvision.transforms as transforms
+from torchvision.transforms import ToTensor, Normalize, Compose
 import skimage
 import tqdm
 from collections import defaultdict
@@ -43,18 +44,23 @@ def shuffle_labels(labels, label_noise, num_classes):
             labels[i] = np.random.randint(0, num_classes)
     return labels
 
-def get_data(dataset, dataset_path, batch_size, test_batch_size, num_classes=None, input_dim=None, datasize=0, label_noise=0.):
+def get_data(dataset, dataset_path, batch_size, test_batch_size, num_classes=None, input_dim=None, datasize=0, label_noise=0, k = 1):
         
-    input_sizes = {'MNIST':28, 'FashionMNIST':28, 'CIFAR10':32, 'CIFAR100':32}
-    output_sizes = {'MNIST':10, 'FashionMNIST':10, 'CIFAR10':10, 'CIFAR100':100}
-    input_channels = {'MNIST':1, 'FashionMNIST':1, 'CIFAR10':3, 'CIFAR100':3}
+    input_sizes = {'MNIST':28, 'FashionMNIST':28, 'CIFAR10':32, 'CIFAR100':32, 'MNISTParity' : 28}
+    output_sizes = {'MNIST':10, 'FashionMNIST':10, 'CIFAR10':10, 'CIFAR100':100, 'MNISTParity' :2}
+    input_channels = {'MNIST':1, 'FashionMNIST':1, 'CIFAR10':3, 'CIFAR100':3, 'MNISTParity' : 1}
     input_size = input_sizes[dataset]
     output_size = output_sizes[dataset]
     input_channels = input_channels[dataset]
 
-    dataclass = eval('Fast'+dataset)
-    train_data = dataclass(dataset_path, train=True, download=True)
-    test_data = dataclass(dataset_path, train=False, download=True)
+    if dataset != "MNISTParity":
+        dataclass = eval('Fast'+dataset)
+        train_data = dataclass(dataset_path, train=True, download=True)
+        test_data = dataclass(dataset_path, train=False, download=True)
+    else:
+        parityData = MNISTParity(k)
+        train_data = parityData.trainset
+        test_data = parityData.testset
     
     if num_classes:
         output_size = num_classes
@@ -196,6 +202,51 @@ class FastCIFAR100(datasets.CIFAR100):
     def __getitem__(self, index):
         img, target = self.data[index], self.targets[index]
         return img, target
+
+class MNISTParity(Dataset):
+   
+	def __init__(self, k, data_root = "data"):
+
+		self.transforms = Compose([
+                    ToTensor(),
+                    Normalize((0.1307,), (0.3081,))
+                ])
+
+		# download and import the original MNIST data
+		self.trainset = datasets.MNIST(data_root, train=True, transform=self.transforms, download=True)
+		self.testset = datasets.MNIST(data_root, train=False, transform=self.transforms, download=True)
+
+		self.trainset.data = self.__stackData(self.trainset.data, k)
+		self.testset.data = self.__stackData(self.testset.data, k)
+
+		self.trainset.targets = self.__getLabels(self.trainset.targets, k)
+		self.testset.targets = self.__getLabels(self.testset.targets, k)
+
+	def __stackData(self, dataset, k):
+
+		tensorListtoStack = []
+		tensorListtoHStack = []
+
+		numSet = len(dataset)
+		remainder = numSet % k
+
+		for idx,x in enumerate(dataset[:numSet-remainder]):
+		    tensorListtoHStack.append(x)
+		    if idx % k == k-1:
+		        y = torch.hstack(tensorListtoHStack)
+		        tensorListtoStack.append(y)
+		        tensorListtoHStack = []
+		data = torch.stack(tensorListtoStack)
+		return data
+
+	def __getLabels(self, targets, k):
+		numSet = len(targets)
+		remainder = numSet % k
+		labels = targets[:numSet-remainder].reshape(numSet // k, k).sum(axis=1) % 2
+		#labels[labels == 0] = -1
+		return labels
+
+    
 
 #helpers
 def copy_py(dst_folder):

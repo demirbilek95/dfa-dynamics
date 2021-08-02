@@ -7,7 +7,7 @@ def add_arguments(parser):
     parser.add_argument('-wi', '--weight_init', type=str, choices=['GAUSSIAN', 'UNIFORM', 'ORTHOGONAL', 'ALIGNED', 'ZERO'], default='UNIFORM',
                         metavar='T', help='init method for the weights')
     
-    parser.add_argument('-d', '--dataset', type=str, choices=['MNIST', 'CIFAR10', 'CIFAR100', 'FashionMNIST', 'RANDOM'], default='MNIST', metavar='D',
+    parser.add_argument('-d', '--dataset', type=str, choices=['MNIST', 'CIFAR10', 'CIFAR100', 'FashionMNIST', 'RANDOM', 'MNISTParity'], default='MNIST', metavar='D',
                         help='dataset choice')
     parser.add_argument('--datasize', type=int, default=None, metavar='D',
                         help='training dataset size')
@@ -64,4 +64,8 @@ def add_arguments(parser):
                         help='path to dataset (default: /data)')
     parser.add_argument('-sp', '--name', type=str, default='./default_name', metavar='P',
                         help='path to save run')
+
+    parser.add_argument('-k', '--k', type=int, default=1, metavar='E--no_gpu True',
+                        help='k for Parity Data')
+
     return parser
