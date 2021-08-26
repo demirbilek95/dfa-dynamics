@@ -102,8 +102,6 @@ def main(args):
     else:
         train_loader, train_loader_log, test_loader, input_size, output_size, input_channels = get_random_data(batch_size=args.batch_size, test_batch_size=args.test_batch_size, num_classes=args.num_classes, input_dim=args.input_dim, datasize=args.datasize, label_noise=args.label_noise, beta=args.beta, alpha=args.alpha, task=args.task, k=args.k)        
 
-    print("Inout Size:", input_size)
-
     train_losses = []
     test_losses = []
     train_accs = []
@@ -189,6 +187,8 @@ def main(args):
         optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, momentum=args.momentum)
     elif args.optimizer == 'Adam':
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+    elif args.optimizer == "AdaDelta":
+        optimizer = torch.optim.Adadelta(model.parameters(), lr=args.learning_rate)
     else:
         raise NotImplementedError
 

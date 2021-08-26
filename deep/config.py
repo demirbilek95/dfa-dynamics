@@ -45,7 +45,7 @@ def add_arguments(parser):
                         help='frequency of logs in steps')
     parser.add_argument('--n_saves', type=int, default=0, metavar='E',
                         help='frequency of weight saves in epochs')
-    parser.add_argument('-opt', '--optimizer', type=str,  choices=['SGD', 'Adam'], default='SGD', metavar='LR',
+    parser.add_argument('-opt', '--optimizer', type=str,  choices=['SGD', 'Adam', 'AdaDelta'], default='SGD', metavar='LR',
                         help='SGD learning rate (default: 0.01)')
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.0001, metavar='LR',
                         help='SGD learning rate (default: 0.01)')
