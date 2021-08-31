@@ -175,10 +175,13 @@ def main(args):
 
             for l in range(len(model.dfa.feedback_matrix)):
                 for col in range(len(model.dfa.feedback_matrix[l])):
-                    model.dfa.feedback_matrix[l][col]/=model.dfa.feedback_matrix[l][col].norm()        
-        
+                    model.dfa.feedback_matrix[l][col]/=model.dfa.feedback_matrix[l][col].norm()
+
     else:
         raise NotImplementedError
+    
+    if args.training_method == 'DFA':
+        model.dfa.feedback_matrix = model.dfa.feedback_matrix.to(device)  
 
     print(args)
     print(model)
