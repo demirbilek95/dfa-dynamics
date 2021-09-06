@@ -99,9 +99,11 @@ def main(args):
 
     if args.dataset != 'RANDOM':
         train_loader, train_loader_log, test_loader, input_size, output_size, input_channels = get_data(args.dataset, args.dataset_path, args.batch_size, args.test_batch_size, num_classes=args.num_classes, input_dim=args.input_dim, datasize=args.datasize, label_noise=args.label_noise, k = args.k)
+    
     else:
         train_loader, train_loader_log, test_loader, input_size, output_size, input_channels = get_random_data(batch_size=args.batch_size, test_batch_size=args.test_batch_size, num_classes=args.num_classes, input_dim=args.input_dim, datasize=args.datasize, label_noise=args.label_noise, beta=args.beta, alpha=args.alpha, task=args.task, k=args.k)        
 
+    
     train_losses = []
     test_losses = []
     train_accs = []
@@ -191,7 +193,7 @@ def main(args):
     elif args.optimizer == 'Adam':
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     elif args.optimizer == "AdaDelta":
-        optimizer = torch.optim.Adadelta(model.parameters(), lr=args.learning_rate)
+        optimizer = torch.optim.Adadelta(model.parameters(), lr=args.learning_rate, weight_decay = 0.001)
     else:
         raise NotImplementedError
 
@@ -204,6 +206,10 @@ def main(args):
         
     weights[0] = copy.deepcopy(model.state_dict())
     for epoch in range(1, args.epochs + 1):
+        if args.dataset == "MNISTParity":
+            # reproduce dataset at each epoch
+            train_loader, train_loader_log, test_loader, input_size, output_size, input_channels = get_data(args.dataset, args.dataset_path, args.batch_size, args.test_batch_size, num_classes=args.num_classes, input_dim=args.input_dim, datasize=args.datasize, label_noise=args.label_noise, k = args.k)    
+        
         train_loss, test_loss, train_acc, test_acc, weight_alignment, grad_alignment = train_and_test(train_loader, train_loader_log, test_loader, model, optimizer, crit, device, epoch, alignment, verbose=True, log_every=args.log_every, args=args)
         for l in range(args.n_layers-1):
             weight_alignments[l]+=[x['layers'][l] for x in weight_alignment]

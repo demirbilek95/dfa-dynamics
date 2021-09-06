@@ -4,7 +4,7 @@ import itertools
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, TensorDataset
 import torchvision
 import torchvision.datasets as datasets
 from torchvision.transforms import ToTensor, Normalize, Compose
@@ -58,10 +58,12 @@ def get_data(dataset, dataset_path, batch_size, test_batch_size, num_classes=Non
         train_data = dataclass(dataset_path, train=True, download=True)
         test_data = dataclass(dataset_path, train=False, download=True)
     else:
-        parityData = MNISTParity(k)
-        train_data = parityData.trainset
-        test_data = parityData.testset
-    
+        transforms = Compose([ToTensor(),Normalize((0.1307,), (0.3081,))])
+        trainset = datasets.MNIST(root='data', train=True, download=True, transform=transforms)
+        testset = datasets.MNIST(root='data', train=False, download=True, transform=transforms)
+        parityDataTrain = MNISTParity(trainset, k = k, batch_size = batch_size)
+        parityDataTest = MNISTParity(testset, k = k, batch_size = test_batch_size)
+
     if num_classes:
         output_size = num_classes
         train_data.targets = train_data.targets%num_classes
@@ -88,9 +90,15 @@ def get_data(dataset, dataset_path, batch_size, test_batch_size, num_classes=Non
         for dataset in [train_data, test_data]:
             dataset.targets = shuffle_labels(dataset.targets, label_noise, output_size)
     
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
-    train_loader_log = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=False)
-    test_loader  = torch.utils.data.DataLoader(test_data, batch_size=test_batch_size, shuffle=True)
+    if dataset != "MNISTParity":
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
+        train_loader_log = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=False)
+        test_loader  = torch.utils.data.DataLoader(test_data, batch_size=test_batch_size, shuffle=True)
+    else:
+        train_loader = parityDataTrain.loader
+        train_loader_log = parityDataTrain.loader
+        test_loader  = parityDataTest.loader
+
     
     return train_loader, train_loader_log, test_loader, input_size, output_size, input_channels
 
@@ -202,52 +210,37 @@ class FastCIFAR100(datasets.CIFAR100):
     def __getitem__(self, index):
         img, target = self.data[index], self.targets[index]
         return img, target
+        
 
-class MNISTParity(Dataset):
-   
-	def __init__(self, k, data_root = "data"):
+class MNISTParity:
+    def __init__(self, dataset, k = 1, batch_size = 128):
 
-		self.transforms = Compose([
-                    ToTensor(),
-                    Normalize((0.1307,), (0.3081,))
-                ])
+        self.k = k
+        # indexes to sample from MNIST data
+        left = np.random.permutation(dataset.data.shape[0])
+        right = np.random.permutation(dataset.data.shape[0])
+        middle = np.random.permutation(dataset.data.shape[0])
+        
+        # concatenate them to have horizontaly stacked images
+        if k == 2:
+            self.data =torch.Tensor( np.concatenate(( dataset.data[left],  dataset.data[right]), axis=2)).float()
+            self.targets = ((dataset.targets[left] + dataset.targets[right]) %2)
+            
+        elif k == 3:
+            self.data =torch.Tensor( np.concatenate(( dataset.data[left], dataset.data[middle],  dataset.data[right]), axis=2)).float()                   
+            self.targets = ((dataset.targets[left] + dataset.targets[middle] + dataset.targets[right]) %2)
 
-		# download and import the original MNIST data
-		self.trainset = datasets.MNIST(data_root, train=True, transform=self.transforms, download=True)
-		self.testset = datasets.MNIST(data_root, train=False, transform=self.transforms, download=True)
-
-		self.trainset.data = self.__stackData(self.trainset.data, k)
-		self.testset.data = self.__stackData(self.testset.data, k)
-
-		self.trainset.targets = self.__getLabels(self.trainset.targets, k)
-		self.testset.targets = self.__getLabels(self.testset.targets, k)
-
-	def __stackData(self, dataset, k):
-
-		tensorListtoStack = []
-		tensorListtoHStack = []
-
-		numSet = len(dataset)
-		remainder = numSet % k
-
-		for idx,x in enumerate(dataset[:numSet-remainder]):
-		    tensorListtoHStack.append(x)
-		    if idx % k == k-1:
-		        y = torch.hstack(tensorListtoHStack)
-		        tensorListtoStack.append(y)
-		        tensorListtoHStack = []
-		data = torch.stack(tensorListtoStack)
-		return data
-
-	def __getLabels(self, targets, k):
-		numSet = len(targets)
-		remainder = numSet % k
-		labels = targets[:numSet-remainder].reshape(numSet // k, k).sum(axis=1) % 2
-		#labels[labels == 0] = -1
-		return labels
-
-    
-
+        # k = 1    
+        else:
+            self.data = dataset.data.float()
+            self.targets = dataset.targets % 2
+            
+            
+        self.loader = torch.utils.data.DataLoader(TensorDataset(self.data, self.targets), batch_size=batch_size,
+                                          shuffle=True)
+        
+        
+  
 #helpers
 def copy_py(dst_folder):
     # and copy all .py's into dst_folder
