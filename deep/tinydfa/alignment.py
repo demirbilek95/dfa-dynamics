@@ -74,20 +74,12 @@ class AlignmentMeasurement:
                         if isinstance(dfa_module, nn.Conv2d) or isinstance(dfa_module, nn.Linear):
                             alignments['layers'].append(alignment)
         alignments['layers'] = alignments['layers'][:-1] #ignore last layer
-        #print("Shape of grads BP", len(grads_dfa))
-        #print(len(grads_dfa), type(grads_dfa))
-        #print(grads_dfa)
         if len(grads_dfa) > 2 and len(grads_bp) > 2:
             grads_dfa = torch.cat(grads_dfa[:-2], dim=1)
             grads_bp = torch.cat(grads_bp[:-2], dim=1)
         else:
             grads_dfa = torch.cat(grads_dfa[:-1], dim=1)
             grads_bp = torch.cat(grads_bp[:-1], dim=1)
-
-        #print(grads_dfa[:-2])
-
-        #print(grads_dfa)
-        #print(grads_dfa.shape)
         
         angle = self.cosine_similarity(grads_bp.to(grad_dfa.device), grads_dfa)
         angle[grads_dfa.sum(dim=1) + grads_bp.sum(dim=1).to(grads_dfa.device) == 0] = 1.
