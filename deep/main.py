@@ -189,16 +189,17 @@ def main(args):
     print(model)
     alignment = AlignmentMeasurement(model, device) if args.training_method != "BP" else None
     if args.optimizer == 'SGD':
-        optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, momentum=args.momentum)
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay = 0.001)
     elif args.optimizer == 'Adam':
-        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay = 0.001)
     elif args.optimizer == "AdaDelta":
         optimizer = torch.optim.Adadelta(model.parameters(), lr=args.learning_rate, weight_decay = 0.001)
     else:
         raise NotImplementedError
 
     if args.task=='CLASSIFICATION':
-        crit = nn.CrossEntropyLoss(reduction='sum')
+        crit = nn.CrossEntropyLoss(reduction='mean')
+        #crit = nn.CrossEntropyLoss(reduction='sum')
     else:
         crit = nn.MSELoss(reduction='sum')
 
